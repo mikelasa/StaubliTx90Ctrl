@@ -1,0 +1,10 @@
+﻿  MainControl.cpp
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\TX90ProxyByPosition.h(16): warning C4305: 'inicializando': truncamiento de 'double' a 'float'
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\TrajQuinticPVA.h(18): warning C4267: 'return': conversión de 'size_t' a 'int'; posible pérdida de datos
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\TrajCubicPV.h(16): warning C4267: 'return': conversión de 'size_t' a 'int'; posible pérdida de datos
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\TrajLSPBPVA.h(18): warning C4267: 'return': conversión de 'size_t' a 'int'; posible pérdida de datos
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\MainControl.cpp(26,27): warning C4305: 'inicializando': truncamiento de 'double' a 'float'
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\MainControl.cpp(28,74): warning C4305: 'inicializando': truncamiento de 'double' a 'float'
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\MainControl.cpp(32,57): warning C4305: 'inicializando': truncamiento de 'double' a 'float'
+D:\TESIS\ControlRobots\PosControlTX90\03PosCtrlTX90\MainControl.cpp(33,49): warning C4305: 'inicializando': truncamiento de 'double' a 'float'
+  03PosCtrlTX90.vcxproj -> D:\TESIS\ControlRobots\PosControlTX90\x64\Debug\03PosCtrlTX90.exe
