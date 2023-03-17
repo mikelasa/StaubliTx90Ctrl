@@ -1,0 +1,212 @@
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+#include <sstream>
+#include <string>
+#include <queue>
+#include <chrono>
+#include <thread>
+
+#include "Eigen/Dense"
+#include <vector>
+
+#include "radToDeg.h"
+#include "StaubliUdpPort.h"
+#include "writeToFile.h"
+#include "PLOTS.h"
+#include "TX90Proxy.h"
+#include "TrajQuinticPVA.h"
+#include "PIDCtrlPV.h"
+#include "TrajCubicPV.h"
+#include "TrajLSPB.h"
+
+using namespace std;
+using namespace Eigen;
+
+int main()
+{
+	//initialize robot proxy
+	TX90Proxy robot;
+
+	std::system("title UDP Client");
+
+	//open port
+	//robot.
+
+	// start communication
+	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	auto lastTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+	int n = 0;
+
+	//initialize variables
+	
+	std::vector<double> trajTime;
+	float deltaT = 0.004;
+
+	std::vector<double> Kp = { 30,	10,		15,  15,	15,	 15 };
+	std::vector<double> Kv = { 0.075,	0.075,	0.075,	0.075,	0.075,	0.075 };
+	std::vector<double> Ki = { 0,	0,	0,	0,	0,	0 };
+
+	std::vector<double> posI = { 0,0,0,0,0,0 };
+	std::vector<double> posF = { 1.5708, 0, 0, 0, 0, 0 };
+
+	std::vector<float> errorPos = { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> errorVel = { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> errorAnt = { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> P = { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> D = { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> I= { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> PIDOUT = { 0.0,	0.0,	0.0,	0.0,	0.0,	0.0 };
+	std::vector<float> errorInt = { 0.0,0.0, 0.0, 0.0, 0.0, 0.0 };
+
+	// CUBIC TRAJECTORY
+	//TrajCubic t0(posI[0], posF[0], 5);
+	//TrajCubic t1(posI[1], posF[1], 5);
+	//TrajCubic t2(posI[2], posF[2], 5);
+	//TrajCubic t3(posI[3], posF[3], 5);
+	//TrajCubic t4(posI[4], posF[4], 5);
+	//TrajCubic t5(posI[5], posF[5], 5);
+
+	// LSPB TRAJECTORY
+	std::vector<double> VelCons = { 0.19,0,0,0,0,0 };
+	TrajLSPB t0(posI[0], posF[0], VelCons[0], 5);
+	TrajLSPB t1(posI[1], posF[1], VelCons[1], 5);
+	TrajLSPB t2(posI[2], posF[2], VelCons[2], 5);
+	TrajLSPB t3(posI[3], posF[3], VelCons[3], 5);
+	TrajLSPB t4(posI[4], posF[4], VelCons[4], 5);
+	TrajLSPB t5(posI[5], posF[5], VelCons[5], 5);
+
+
+	// QUINTIC TRAYECTORY
+	//TrajQuintic t0(posI[0], posF[0], 5);
+	//TrajQuintic t1(posI[1], posF[1], 5);
+	//TrajQuintic t2(posI[2], posF[2], 5);
+	//TrajQuintic t3(posI[3], posF[3], 5);
+	//TrajQuintic t4(posI[4], posF[4], 5);
+	//TrajQuintic t5(posI[5], posF[5], 5);
+
+
+	//// ADD steady state for trajectory
+	//std::cout << "trajectory length:" << qc[0].size() << std::endl;
+	//for (int i = 0; i < 200; i++) {
+	//	for (int j = 0; j < 6; j++) {
+	//		qc[j].push_back(posF[j]);
+	//		dqc[j].push_back(0);
+	//	}
+	//}
+
+	std::vector<std::vector<float>> plotPos(6);
+	std::vector<std::vector<float>> plotVel(6);
+	std::vector<std::vector<float>> plotPID(6);
+
+	// SANITY PLOT
+	//plt::figure();
+	//plt::title("Trajectory");
+	//plt::named_plot("command", qc.at(1), "k--");
+	//plt::figure();
+	//plt::named_plot("Real", dqc.at(1), "b");
+	//plt::figure();
+	//plt::named_plot("Real", ddqc.at(1), "b");
+	//plt::show();
+
+	int lengthTrac = t0.getNumSamples();
+
+	std::vector<float> actualpos;
+	std::vector<float> actualvel;
+
+	TrajPVA *pt = new TrajQuinticPVA(posI[0], posF[0], 5, 0.004);
+	PIDCtrlPV Ctrl0(pt, Kp[0], Ki[0], Kv[0]);
+	pt = new TrajQuinticPVA(posI[1], posF[1], 5, 0.004);
+	PIDCtrlPV Ctrl1(pt, Kp[1], Ki[1], Kv[1]);
+//TrajQuintic t2(posI[2], posF[2], 5);
+//TrajQuintic t3(posI[3], posF[3], 5);
+//TrajQuintic t4(posI[4], posF[4], 5);
+//TrajQuintic t5(posI[5], posF[5], 5);
+	PIDCtrl Ctrl1(t1, Kp[1], Ki[1], Kv[1]);
+	PIDCtrl Ctrl2(t2, Kp[2], Ki[2], Kv[2]);
+	PIDCtrl Ctrl3(t3, Kp[3], Ki[3], Kv[3]);
+	PIDCtrl Ctrl4(t4, Kp[4], Ki[4], Kv[4]);
+	PIDCtrl Ctrl5(t5, Kp[5], Ki[5], Kv[5]);
+
+	PIDCtrlPV *pCtrls[6];
+
+	for (int i = 0; i < 6; i++)
+	{
+		TrajPVA* pt = new TrajQuinticPVA(posI[i], posF[i], 5, 0.004);
+		pCtrls[i] = new PIDCtrlPV(pt, Kp[i], Ki[i], Kv[i]);
+	}
+
+	std::vector<float> robotCommand = { 0,0,0,0,0,0 };
+
+	for (int i = 0; i < lengthTrac; i++) {
+
+		actualpos = robot.getPositions();
+		actualvel = robot.getSpeeds();
+
+		for (int j = 0; j < 6; j++)
+		{
+			robotCommand[j] = pCtrls[j]->getPidCommand(i, actualpos[j], actualvel[j]);
+		}
+		
+
+		// SEND COMMAND
+		robot.sendCommand(actualvel, errorVel, robotCommand);
+
+		time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+		//Refresh Robot data
+		robot.refresh();
+	}
+
+	for (int i = 0; i < 6; i++)
+	{
+		delete pCtrls[i];
+	}
+
+	std::vector<float> RobotCommand = { 0,0,0,0,0,0 };
+
+	for (int i = 0; i < lengthTrac; i++) {
+
+		actualpos = robot.getPositions();
+		actualvel = robot.getSpeeds();
+
+		RobotCommand[0] = Ctrl0.getPidCommand(i, actualpos[0], actualvel[0]);
+		RobotCommand[1] = Ctrl1.getPidCommand(i, actualpos[1], actualvel[1]);
+		RobotCommand[2] = Ctrl2.getPidCommand(i, actualpos[2], actualvel[2]);
+		RobotCommand[3] = Ctrl3.getPidCommand(i, actualpos[3], actualvel[3]);
+		RobotCommand[4] = Ctrl4.getPidCommand(i, actualpos[4], actualvel[4]);
+		RobotCommand[5] = Ctrl5.getPidCommand(i, actualpos[5], actualvel[5]);
+
+
+		// SEND COMMAND
+		robot.sendCommand(actualvel, errorVel, RobotCommand);
+
+		time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+		//Refresh Robot data
+		robot.refresh();
+	}
+
+	//Ctrl0.setTrj(TrajQuintic(posI[0], posF[0], 5));
+	
+
+	// PLOT DATA 
+  // from radians to degrees
+	/*
+	float rad2deg = (180.0 / 3.141592653589793238463);
+	for (int i = 0; i < qc[0].size(); i++) {
+		for (int j = 0; j < 6; j++) {
+			qc[j][i] = qc[j][i] * rad2deg;
+			dqc[j][i] = dqc[j][i] * rad2deg;
+			plotPos[j][i] = plotPos[j][i] * rad2deg;
+			plotVel[j][i] = plotVel[j][i] * rad2deg;
+		}
+	}
+	*/
+	//?
+	std::this_thread::sleep_for(std::chrono::milliseconds(8));
+
+	return 0;
+}
+
